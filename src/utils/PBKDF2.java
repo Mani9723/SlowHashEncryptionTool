@@ -106,7 +106,7 @@ public class PBKDF2 {
 	}
 
 	/**
-	 * Creates PBKDF2 key
+	 * gets the PBKDF2 key
 	 * @return derivedKey
 	 */
 	public String getDerivedKey()
