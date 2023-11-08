@@ -37,7 +37,6 @@ public class SecureLoginReader
 
 	private static String getPassword()
 	{
-		String password;
 		Console console = System.console();
 		if(console != null) {
 			// Password hiding only works in terminal environment.
