@@ -3,6 +3,7 @@ package utils;
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 import java.nio.charset.StandardCharsets;
+import java.security.SecureRandom;
 import java.util.Arrays;
 import java.util.Objects;
 
@@ -100,18 +101,18 @@ public class PBKDF2 {
 		this.orgPassword = Arrays.toString(password);
 		this.salt = salt;
 		this.iterations = iterations;
-		this.dklen = keyLength;
+		this.dklen = keyLength >>> 3;
 		this.prfAlgo = prfAlgorithm;
 		this.derivedKey = new byte[dklen];
 	}
 
 	/**
-	 * gets the PBKDF2 key
+	 * Gets the PBKDF2 key
 	 * @return derivedKey
 	 */
 	public String getDerivedKey()
 	{
-		return getHexKey(Objects.requireNonNull(generatePBKDF2()));
+		return generatePBKDF2() != null ? getHexKey(derivedKey) : null;
 	}
 
 	/**
