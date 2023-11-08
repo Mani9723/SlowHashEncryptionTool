@@ -1,5 +1,9 @@
 package scrypt;
 
+import utils.PBKDF2;
+
+import java.security.SecureRandom;
+
 public class ScryptHash
 {
 	private String username;
@@ -9,6 +13,7 @@ public class ScryptHash
 	private int blockSizeFactor;
 	private int parallelizationFactor; // (1..232-1 * hLen/MFlen)
 	private int desiredKeyLen; // Desired key length in bytes
+	private static final String PRF_ALGORITHM = "HmacSHA256";
 
 
 
@@ -25,8 +30,23 @@ public class ScryptHash
 
 	public boolean verifyUser()
 	{
+		return false;
+	}
 
-		return true;
+
+	private String getUsername()
+	{
+		return this.username;
+	}
+
+	private String getPlaintextPassword()
+	{
+		return new String(passphrase);
+	}
+
+	private byte[] getPassphrase()
+	{
+		return this.passphrase;
 	}
 
 }
