@@ -165,6 +165,21 @@ public class PBKDF2 {
 			u1[i] ^= u2[i];
 		}
 	}
+	
+	public static byte[][] divideArray(byte[] source, int chunksize) {
+	     
+        byte[][] ret = new byte[(int)Math.ceil(source.length / (double)chunksize)][chunksize];
+ 
+        int start = 0;
+ 
+        for(int i = 0; i < ret.length; i++) {
+            ret[i] = Arrays.copyOfRange(source,start, start + chunksize);
+            start += chunksize ;
+        }
+ 
+        return ret;
+	}
+	
 
 	/**
 	 * Converts integer to byte array

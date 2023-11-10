@@ -3,6 +3,7 @@ package scrypt;
 import utils.PBKDF2;
 
 import java.security.SecureRandom;
+import java.util.ArrayList;
 
 
 /**
@@ -48,6 +49,7 @@ public class ScryptHash
 		this.username = username;
 		this.passphrase = plainTextPassword.getBytes();
 		init();
+		encryptPassword();
 
 	}
 
@@ -86,15 +88,32 @@ public class ScryptHash
 	private void encryptPassword()
 	{
 		byte[] initialSalt = getInitialSalt();
-		//checking initial salt to be sure.
-		// DELETE LATER
-		System.out.println(initialSalt.length);
-		for(int i = 0; i< initialSalt.length; i++){
-			System.out.print(initialSalt[i]+",");
+		byte[][] saltBlocks = PBKDF2.divideArray(initialSalt,blockSize);
+		for(int i =0; i<saltBlocks.length;i++) {
+			byte[] block = saltBlocks[i];
 		}
+
 
 		//TODO MixSalt -> Finalize Salt
 	}
+	private void rowMix(byte[] block, int iterations) {
+		ArrayList tempV = new ArrayList();
+		ArrayList tempJ = new ArrayList();
+
+		for(int i =0; i <iterations;i++) {
+			tempV.add(block);
+			block=blockMix(block);
+		}
+		for(int i =0; i <iterations;i++) {
+			tempJ.add(block);
+			block=blockMix(block);
+		}
+		
+	}
+	private byte[] blockMix(byte[] block) {
+		return null;
+	}
+	
 
 	/**
 	 * Creates a Secure Random salt to be used to create the expensive salt
@@ -106,7 +125,9 @@ public class ScryptHash
 		secureRandom.nextBytes(randomSalt);
 		return randomSalt;
 	}
-
+	public boolean verifyUser() {
+		return true;
+	}
 
 
 	private String getUsername()
