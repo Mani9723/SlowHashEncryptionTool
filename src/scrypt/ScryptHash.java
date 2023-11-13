@@ -36,12 +36,14 @@ public class ScryptHash
 	{
 		ScryptHash scryptHash = new ScryptHash("mshah22","password");
 		//scryptHash.encryptPassword();
-		
-		String temp = new String(scryptHash.salt);
-		ScryptHash scryptHash2 = new ScryptHash("mshah22","password",temp);
-		
-		temp = new String(scryptHash.passHash);
-		String temp2 = new String(scryptHash2.salt);
+		// Mani: Avoid string->byte[]->string conversion. messes up the values.
+//		String temp = new String(scryptHash.salt);
+		ScryptHash scryptHash2 = new ScryptHash("mshah22","password", scryptHash.getRandomSalt()); // Same Salt needs to be passed
+
+//		temp = new String(scryptHash.passHash);
+		String temp = new String(scryptHash.passHash);
+//		String temp2 = new String(scryptHash2.salt);
+		String temp2 = new String(scryptHash2.passHash);
 		if(temp.equals(temp2)) {
 			System.out.println("Yippie ");
 		}else {
@@ -49,6 +51,16 @@ public class ScryptHash
 		}
 	}
 
+
+	public byte[] getRandomSalt()
+	{
+		return this.salt;
+	}
+
+	public void setSalt(byte[] salt)
+	{
+		this.salt = salt;
+	}
 
 	/**
 	 * Main Constructor
@@ -65,7 +77,11 @@ public class ScryptHash
 		String temp = new String(passphrase);
 		System.out.println("Password: "+temp);
 		temp = new String(salt);
-		System.out.println("Salt: "+temp);
+		System.out.print("Salt: ");
+		for(int i = 0; i < salt.length;i++){
+			System.out.print(salt[i] +",");
+		}
+		System.out.println();
 		encryptPassword();
 		
 		temp = new String(passHash);
@@ -73,17 +89,22 @@ public class ScryptHash
 	}
 	
 	
-	public ScryptHash(String username, String plainTextPassword,String salt)
+	public ScryptHash(String username, String plainTextPassword,byte[] salt)
 	{
 		this.orgPass = plainTextPassword;
 		this.username = username;
 		this.passphrase = plainTextPassword.getBytes();
-		init();
-		this.salt=salt.getBytes();
+		init(); // creates brand new salt.
+		setSalt(salt); // reset this so that it uses the parameter byte[] instead
+//		this.salt=salt.getBytes(); // avoid this conversion
 		String temp = new String(passphrase);
 		System.out.println("Password: "+temp);
 		
-		System.out.println("Salt: "+salt);
+		System.out.print("Salt: ");
+		for(int i = 0; i < this.salt.length;i++){
+			System.out.print(this.salt[i] +",");
+		}
+		System.out.println();
 		encryptPassword();
 		
 		temp = new String(passHash);
@@ -100,7 +121,7 @@ public class ScryptHash
 		blockSizeFactor = 8;
 		parallelizationFactor = 3;
 		blockSize = 128*blockSizeFactor*parallelizationFactor;
-		salt = randomSalt();
+		salt = randomSalt(); // we need to keep track of this value. ie store in Database
 		desiredKeyLen = 32;
 	}
 
