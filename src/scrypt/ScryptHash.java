@@ -21,6 +21,7 @@ public class ScryptHash
 	private final byte[] passphrase; // string of characters to be hashed
 	private final String orgPass;
 	private byte[] salt;  // random salt
+	private byte[] passHash;
 	private int costFactor; // CPU/Memory cost, must be power of 2
 	private int blockSizeFactor;
 	private int parallelizationFactor; // Parallelization parameter. (1 .. 2<sup>32</sup>-1 * hLen/MFlen)
@@ -34,7 +35,18 @@ public class ScryptHash
 	public static void main(String[] args)
 	{
 		ScryptHash scryptHash = new ScryptHash("mshah22","password");
-		scryptHash.encryptPassword();
+		//scryptHash.encryptPassword();
+		
+		String temp = new String(scryptHash.salt);
+		ScryptHash scryptHash2 = new ScryptHash("mshah22","password",temp);
+		
+		temp = new String(scryptHash.passHash);
+		String temp2 = new String(scryptHash2.salt);
+		if(temp.equals(temp2)) {
+			System.out.println("Yippie ");
+		}else {
+			System.out.println("BOOOO ");
+		}
 	}
 
 
@@ -49,7 +61,33 @@ public class ScryptHash
 		this.username = username;
 		this.passphrase = plainTextPassword.getBytes();
 		init();
+		
+		String temp = new String(passphrase);
+		System.out.println("Password: "+temp);
+		temp = new String(salt);
+		System.out.println("Salt: "+temp);
 		encryptPassword();
+		
+		temp = new String(passHash);
+		//System.out.println("Hash: "+temp);
+	}
+	
+	
+	public ScryptHash(String username, String plainTextPassword,String salt)
+	{
+		this.orgPass = plainTextPassword;
+		this.username = username;
+		this.passphrase = plainTextPassword.getBytes();
+		init();
+		this.salt=salt.getBytes();
+		String temp = new String(passphrase);
+		System.out.println("Password: "+temp);
+		
+		System.out.println("Salt: "+salt);
+		encryptPassword();
+		
+		temp = new String(passHash);
+		//System.out.println("Hash: "+temp);
 
 	}
 
@@ -61,9 +99,9 @@ public class ScryptHash
 		costFactor = 16384;
 		blockSizeFactor = 8;
 		parallelizationFactor = 3;
+		blockSize = 128*blockSizeFactor*parallelizationFactor;
 		salt = randomSalt();
 		desiredKeyLen = 32;
-		MFlen = blockSizeFactor*128;
 	}
 
 
@@ -76,9 +114,15 @@ public class ScryptHash
 	private byte[] getInitialSalt()
 	{
 		// Define blocksize
-		blockSize = 128*blockSizeFactor;
-		PBKDF2 pbkdf2 = new PBKDF2(orgPass,salt,1,blockSize*parallelizationFactor,PRF_ALGORITHM);
-		return pbkdf2.createExpensiveSalt();
+		
+		PBKDF2 pbkdf2 = new PBKDF2(orgPass,salt,1,blockSize,PRF_ALGORITHM);
+		String temp = new String(salt);
+		System.out.println("orgPass:"+orgPass+"; salt:"+temp+"; BlockSize:"+blockSize+"; Algo:"+PRF_ALGORITHM);
+		byte [] toReturn=pbkdf2.createExpensiveSalt();
+		System.out.println("Length: "+toReturn.length);
+		temp = new String(toReturn);
+		System.out.println("String: "+temp);
+		return toReturn;
 	}
 
 	/**
@@ -87,32 +131,66 @@ public class ScryptHash
 	 */
 	private void encryptPassword()
 	{
-		byte[] initialSalt = getInitialSalt();
-		byte[][] saltBlocks = PBKDF2.divideArray(initialSalt,blockSize);
+		//Step 1 Get Initial Salt
+		byte[] salt = getInitialSalt();
+		byte[] pass = orgPass.getBytes();
+		
+		
+		
+		//Step 2 Mix Salt and Key
+		byte[][] saltBlocks = PBKDF2.divideArray(salt,blockSize);
+		byte[][] passBlocks = PBKDF2.divideArray(pass,blockSize);
+		
+		//Row Mix
+		
 		for(int i =0; i<saltBlocks.length;i++) {
-			byte[] block = saltBlocks[i];
+			rowMix(passBlocks[i],saltBlocks[i]);
 		}
-
-
+		//Step 3 Get Final Key
+		
+		
+		PBKDF2 pbkdf2 = new PBKDF2(orgPass,salt,1,blockSize,PRF_ALGORITHM);
+		this.passHash = pbkdf2.createExpensiveSalt();
+		
+		//Expensive Salt
+		
+		 
 		//TODO MixSalt -> Finalize Salt
 	}
-	private void rowMix(byte[] block, int iterations) {
-		ArrayList tempV = new ArrayList();
-		ArrayList tempJ = new ArrayList();
 
-		for(int i =0; i <iterations;i++) {
-			tempV.add(block);
-			block=blockMix(block);
-		}
-		for(int i =0; i <iterations;i++) {
-			tempJ.add(block);
-			block=blockMix(block);
-		}
+
+	private byte[] rowMix(byte[] passBlocks,byte[] saltBlocks) {
 		
+		byte[] mixBlock = new byte[blockSize];
+        byte[] xorBlock = new byte[blockSize];
+        
+        System.arraycopy(passBlocks, 0, mixBlock, 0, passBlocks.length);
+		
+		for (int i = 0; i < costFactor; i++) {
+			//block mix
+			blockMix(mixBlock, saltBlocks);
+
+            // XOR the results together
+            for (int j = 0; j < blockSize; j++) {
+                xorBlock[j] ^= mixBlock[j];
+            }
+        }
+		return xorBlock;
 	}
-	private byte[] blockMix(byte[] block) {
-		return null;
-	}
+	private void blockMix(byte[] block1, byte[] block2) {
+        for (int i = 0; i < parallelizationFactor; i++) {
+        	block1[i] = (byte) (block1[i] ^ block2[i]);
+        }
+    }
+	
+	
+	private static byte[] xorBlocks(byte[] block1, byte[] block2) {
+        byte[] result = new byte[block1.length];
+        for (int i = 0; i < block1.length; i++) {
+            result[i] = (byte) (block1[i] ^ block2[i]);
+        }
+        return result;
+    }
 	
 
 	/**
