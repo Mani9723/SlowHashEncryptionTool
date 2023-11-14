@@ -73,19 +73,10 @@ public class ScryptHash
 		this.username = username;
 		this.passphrase = plainTextPassword.getBytes();
 		init();
-		
-		String temp = new String(passphrase);
-		System.out.println("Password: "+temp);
-		temp = new String(salt);
-		System.out.print("Salt: ");
-		for(int i = 0; i < salt.length;i++){
-			System.out.print(salt[i] +",");
-		}
-		System.out.println();
+		long start=System.currentTimeMillis();
 		encryptPassword();
-		
-		temp = new String(passHash);
-		//System.out.println("Hash: "+temp);
+		long end=System.currentTimeMillis();
+		System.out.println("Time:"+(end-start));
 	}
 	
 	
@@ -96,20 +87,10 @@ public class ScryptHash
 		this.passphrase = plainTextPassword.getBytes();
 		init(); // creates brand new salt.
 		setSalt(salt); // reset this so that it uses the parameter byte[] instead
-//		this.salt=salt.getBytes(); // avoid this conversion
-		String temp = new String(passphrase);
-		System.out.println("Password: "+temp);
-		
-		System.out.print("Salt: ");
-		for(int i = 0; i < this.salt.length;i++){
-			System.out.print(this.salt[i] +",");
-		}
-		System.out.println();
+		long start=System.currentTimeMillis();
 		encryptPassword();
-		
-		temp = new String(passHash);
-		//System.out.println("Hash: "+temp);
-
+		long end=System.currentTimeMillis();
+		System.out.println("Time:"+(end-start));
 	}
 
 	/**
@@ -117,7 +98,7 @@ public class ScryptHash
 	 */
 	private void init()
 	{
-		costFactor = 16384;
+		costFactor = 16384*2000;
 		blockSizeFactor = 8;
 		parallelizationFactor = 3;
 		blockSize = 128*blockSizeFactor*parallelizationFactor;
@@ -137,12 +118,7 @@ public class ScryptHash
 		// Define blocksize
 		
 		PBKDF2 pbkdf2 = new PBKDF2(orgPass,salt,1,blockSize,PRF_ALGORITHM);
-		String temp = new String(salt);
-		System.out.println("orgPass:"+orgPass+"; salt:"+temp+"; BlockSize:"+blockSize+"; Algo:"+PRF_ALGORITHM);
 		byte [] toReturn=pbkdf2.createExpensiveSalt();
-		System.out.println("Length: "+toReturn.length);
-		temp = new String(toReturn);
-		System.out.println("String: "+temp);
 		return toReturn;
 	}
 
