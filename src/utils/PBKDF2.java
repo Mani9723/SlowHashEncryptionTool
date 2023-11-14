@@ -195,6 +195,19 @@ public class PBKDF2 {
 		System.arraycopy(b, 0, result, a.length, b.length);
 		return result;
 	}
+	public static byte[][] divideArray(byte[] source, int chunksize) {
+	     
+        byte[][] ret = new byte[(int)Math.ceil(source.length / (double)chunksize)][chunksize];
+ 
+        int start = 0;
+ 
+        for(int i = 0; i < ret.length; i++) {
+            ret[i] = Arrays.copyOfRange(source,start, start + chunksize);
+            start += chunksize ;
+        }
+ 
+        return ret;
+	}
 
 	public static void main(String[] args) {
 		// Example usage
