@@ -1,11 +1,8 @@
 import utils.SecureLoginReader;
+public class ApplicationMain {
 
-public class ApplicationMain
-{
-	public static void main(String[] args)
-	{
+	public static void main(String[] args) {
 		SecureLoginReader.run();
 	}
-
 
 }

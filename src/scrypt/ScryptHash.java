@@ -3,6 +3,7 @@ package scrypt;
 import utils.PBKDF2;
 
 import java.security.SecureRandom;
+import java.util.ArrayList;
 
 
 /**
@@ -20,6 +21,7 @@ public class ScryptHash
 	private final byte[] passphrase; // string of characters to be hashed
 	private final String orgPass;
 	private byte[] salt;  // random salt
+	private byte[] passHash;
 	private int costFactor; // CPU/Memory cost, must be power of 2
 	private int blockSizeFactor;
 	private int parallelizationFactor; // Parallelization parameter. (1 .. 2<sup>32</sup>-1 * hLen/MFlen)
@@ -33,9 +35,32 @@ public class ScryptHash
 	public static void main(String[] args)
 	{
 		ScryptHash scryptHash = new ScryptHash("mshah22","password");
-		scryptHash.encryptPassword();
+		//scryptHash.encryptPassword();
+		// Mani: Avoid string->byte[]->string conversion. messes up the values.
+//		String temp = new String(scryptHash.salt);
+		ScryptHash scryptHash2 = new ScryptHash("mshah22","password", scryptHash.getRandomSalt()); // Same Salt needs to be passed
+
+//		temp = new String(scryptHash.passHash);
+		String temp = new String(scryptHash.passHash);
+//		String temp2 = new String(scryptHash2.salt);
+		String temp2 = new String(scryptHash2.passHash);
+		if(temp.equals(temp2)) {
+			System.out.println("Yippie ");
+		}else {
+			System.out.println("BOOOO ");
+		}
 	}
 
+
+	public byte[] getRandomSalt()
+	{
+		return this.salt;
+	}
+
+	public void setSalt(byte[] salt)
+	{
+		this.salt = salt;
+	}
 
 	/**
 	 * Main Constructor
@@ -48,7 +73,24 @@ public class ScryptHash
 		this.username = username;
 		this.passphrase = plainTextPassword.getBytes();
 		init();
-
+		long start=System.currentTimeMillis();
+		encryptPassword();
+		long end=System.currentTimeMillis();
+		System.out.println("Time:"+(end-start));
+	}
+	
+	
+	public ScryptHash(String username, String plainTextPassword,byte[] salt)
+	{
+		this.orgPass = plainTextPassword;
+		this.username = username;
+		this.passphrase = plainTextPassword.getBytes();
+		init(); // creates brand new salt.
+		setSalt(salt); // reset this so that it uses the parameter byte[] instead
+		long start=System.currentTimeMillis();
+		encryptPassword();
+		long end=System.currentTimeMillis();
+		System.out.println("Time:"+(end-start));
 	}
 
 	/**
@@ -56,12 +98,12 @@ public class ScryptHash
 	 */
 	private void init()
 	{
-		costFactor = 16384;
+		costFactor = 16384*2000;
 		blockSizeFactor = 8;
 		parallelizationFactor = 3;
-		salt = randomSalt();
+		blockSize = 128*blockSizeFactor*parallelizationFactor;
+		salt = randomSalt(); // we need to keep track of this value. ie store in Database
 		desiredKeyLen = 32;
-		MFlen = blockSizeFactor*128;
 	}
 
 
@@ -74,9 +116,10 @@ public class ScryptHash
 	private byte[] getInitialSalt()
 	{
 		// Define blocksize
-		blockSize = 128*blockSizeFactor;
-		PBKDF2 pbkdf2 = new PBKDF2(orgPass,salt,1,blockSize*parallelizationFactor,PRF_ALGORITHM);
-		return pbkdf2.createExpensiveSalt();
+		
+		PBKDF2 pbkdf2 = new PBKDF2(orgPass,salt,1,blockSize,PRF_ALGORITHM);
+		byte [] toReturn=pbkdf2.createExpensiveSalt();
+		return toReturn;
 	}
 
 	/**
@@ -85,16 +128,67 @@ public class ScryptHash
 	 */
 	private void encryptPassword()
 	{
-		byte[] initialSalt = getInitialSalt();
-		//checking initial salt to be sure.
-		// DELETE LATER
-		System.out.println(initialSalt.length);
-		for(int i = 0; i< initialSalt.length; i++){
-			System.out.print(initialSalt[i]+",");
+		//Step 1 Get Initial Salt
+		byte[] salt = getInitialSalt();
+		byte[] pass = orgPass.getBytes();
+		
+		
+		
+		//Step 2 Mix Salt and Key
+		byte[][] saltBlocks = PBKDF2.divideArray(salt,blockSize);
+		byte[][] passBlocks = PBKDF2.divideArray(pass,blockSize);
+		
+		//Row Mix
+		
+		for(int i =0; i<saltBlocks.length;i++) {
+			rowMix(passBlocks[i],saltBlocks[i]);
 		}
-
+		//Step 3 Get Final Key
+		
+		
+		PBKDF2 pbkdf2 = new PBKDF2(orgPass,salt,1,blockSize,PRF_ALGORITHM);
+		this.passHash = pbkdf2.createExpensiveSalt();
+		
+		//Expensive Salt
+		
+		 
 		//TODO MixSalt -> Finalize Salt
 	}
+
+
+	private byte[] rowMix(byte[] passBlocks,byte[] saltBlocks) {
+		
+		byte[] mixBlock = new byte[blockSize];
+        byte[] xorBlock = new byte[blockSize];
+        
+        System.arraycopy(passBlocks, 0, mixBlock, 0, passBlocks.length);
+		
+		for (int i = 0; i < costFactor; i++) {
+			//block mix
+			blockMix(mixBlock, saltBlocks);
+
+            // XOR the results together
+            for (int j = 0; j < blockSize; j++) {
+                xorBlock[j] ^= mixBlock[j];
+            }
+        }
+		return xorBlock;
+	}
+	private void blockMix(byte[] block1, byte[] block2) {
+        for (int i = 0; i < parallelizationFactor; i++) {
+        	block1[i] = (byte) (block1[i] ^ block2[i]);
+        }
+    }
+	
+	
+	private static byte[] xorBlocks(byte[] block1, byte[] block2) {
+        byte[] result = new byte[block1.length];
+        for (int i = 0; i < block1.length; i++) {
+            result[i] = (byte) (block1[i] ^ block2[i]);
+        }
+        return result;
+    }
+	
 
 	/**
 	 * Creates a Secure Random salt to be used to create the expensive salt
@@ -106,7 +200,9 @@ public class ScryptHash
 		secureRandom.nextBytes(randomSalt);
 		return randomSalt;
 	}
-
+	public boolean verifyUser() {
+		return true;
+	}
 
 
 	private String getUsername()
